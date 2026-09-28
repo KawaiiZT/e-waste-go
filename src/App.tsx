@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleAlert,
   ClipboardList,
@@ -29,10 +30,8 @@ import {
   WashingMachine,
   X,
 } from "lucide-react";
-import { th } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 
 type ItemKey = "phone" | "laptop" | "accessory" | "appliance";
 type View = "booking" | "lookup" | "success";
@@ -82,6 +81,48 @@ async function readApiResponse<T>(response: Response): Promise<T> {
     response.status >= 500
       ? "ระบบเซิร์ฟเวอร์ขัดข้อง กรุณาตรวจสอบ Vercel Function Logs และ Environment Variables"
       : detail || `เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (${response.status})`,
+  );
+}
+
+function PickupCalendar({ selected, minDate, onSelect }: { selected: Date; minDate: Date; onSelect: (date: Date) => void }) {
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
+  const normalizedMin = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+  const todayValue = new Date();
+  const today = new Date(todayValue.getFullYear(), todayValue.getMonth(), todayValue.getDate());
+  const monthStart = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1);
+  const firstWeekday = monthStart.getDay();
+  const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+  const cellCount = firstWeekday + daysInMonth <= 35 ? 35 : 42;
+  const canGoPrevious = monthStart > new Date(normalizedMin.getFullYear(), normalizedMin.getMonth(), 1);
+  const monthLabel = new Intl.DateTimeFormat("th-TH", { month: "long", year: "numeric" }).format(visibleMonth);
+  const weekdays = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+  const cells = Array.from({ length: cellCount }, (_, index) => {
+    const dayNumber = index - firstWeekday + 1;
+    return dayNumber >= 1 && dayNumber <= daysInMonth ? dayNumber : null;
+  });
+  const isSameDay = (left: Date, right: Date) => left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+  const moveMonth = (amount: number) => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + amount, 1));
+
+  return (
+    <div className="booking-calendar" aria-label="ปฏิทินเลือกวันรับขยะ">
+      <div className="calendar-toolbar">
+        <button type="button" aria-label="เดือนก่อนหน้า" onClick={() => moveMonth(-1)} disabled={!canGoPrevious}><ChevronLeft /></button>
+        <strong>{monthLabel}</strong>
+        <button type="button" aria-label="เดือนถัดไป" onClick={() => moveMonth(1)}><ChevronRight /></button>
+      </div>
+      <div className="calendar-weekdays" aria-hidden="true">{weekdays.map((weekday) => <span key={weekday}>{weekday}</span>)}</div>
+      <div className="calendar-days">
+        {cells.map((dayNumber, index) => {
+          if (!dayNumber) return <span className="calendar-day empty" key={`empty-${index}`} />;
+          const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), dayNumber);
+          const disabled = date < normalizedMin;
+          const selectedDay = isSameDay(date, selected);
+          const todayDay = isSameDay(date, today);
+          const className = ["calendar-day", disabled ? "disabled" : "available", selectedDay ? "selected" : "", todayDay ? "today" : ""].filter(Boolean).join(" ");
+          return <button type="button" key={date.toISOString()} className={className} disabled={disabled} aria-label={new Intl.DateTimeFormat("th-TH", { dateStyle: "full" }).format(date)} aria-pressed={selectedDay} onClick={() => onSelect(date)}>{dayNumber}</button>;
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -207,18 +248,7 @@ function UserApp() {
                 <div className="panel-heading"><span>3</span><div><h2>เลือกวันและเวลา</h2><p>เลือกวันที่สะดวกสำหรับให้เจ้าหน้าที่เข้ารับ</p></div></div>
                 <div className="schedule-grid">
                   <div className="calendar-wrap">
-                    <Calendar
-                      mode="single"
-                      locale={th}
-                      selected={selectedDate}
-                      onSelect={(date) => date && setSelectedDate(date)}
-                      disabled={{ before: tomorrow }}
-                      modifiers={{ available: { from: tomorrow } }}
-                      modifiersClassNames={{ available: "calendar-day-available" }}
-                      startMonth={tomorrow}
-                      showOutsideDays={false}
-                      className="booking-calendar"
-                    />
+                    <PickupCalendar selected={selectedDate} minDate={tomorrow} onSelect={setSelectedDate} />
                     <div className="calendar-legend" aria-label="คำอธิบายสถานะวันที่"><span><i className="available" /> เลือกได้</span><span><i className="selected" /> วันที่เลือก</span><span><i className="unavailable" /> เลือกไม่ได้</span></div>
                   </div>
                   <div className="time-picker"><h3>ช่วงเวลาเข้ารับ</h3>{["09:00–12:00", "13:00–16:00"].map((time) => <button key={time} className={timeSlot === time ? "selected" : ""} onClick={() => setTimeSlot(time)}><Clock3 /><span><strong>{time}</strong><small>{time.startsWith("09") ? "รอบเช้า" : "รอบบ่าย"}</small></span>{timeSlot === time && <Check />}</button>)}</div>

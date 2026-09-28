@@ -207,7 +207,19 @@ function UserApp() {
                 <div className="panel-heading"><span>3</span><div><h2>เลือกวันและเวลา</h2><p>เลือกวันที่สะดวกสำหรับให้เจ้าหน้าที่เข้ารับ</p></div></div>
                 <div className="schedule-grid">
                   <div className="calendar-wrap">
-                    <Calendar mode="single" locale={th} selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} disabled={{ before: tomorrow }} startMonth={tomorrow} className="booking-calendar" />
+                    <Calendar
+                      mode="single"
+                      locale={th}
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      disabled={{ before: tomorrow }}
+                      modifiers={{ available: { from: tomorrow } }}
+                      modifiersClassNames={{ available: "calendar-day-available" }}
+                      startMonth={tomorrow}
+                      showOutsideDays={false}
+                      className="booking-calendar"
+                    />
+                    <div className="calendar-legend" aria-label="คำอธิบายสถานะวันที่"><span><i className="available" /> เลือกได้</span><span><i className="selected" /> วันที่เลือก</span><span><i className="unavailable" /> เลือกไม่ได้</span></div>
                   </div>
                   <div className="time-picker"><h3>ช่วงเวลาเข้ารับ</h3>{["09:00–12:00", "13:00–16:00"].map((time) => <button key={time} className={timeSlot === time ? "selected" : ""} onClick={() => setTimeSlot(time)}><Clock3 /><span><strong>{time}</strong><small>{time.startsWith("09") ? "รอบเช้า" : "รอบบ่าย"}</small></span>{timeSlot === time && <Check />}</button>)}</div>
                 </div>

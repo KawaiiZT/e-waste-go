@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Clock3,
   Computer,
+  FileDown,
   Headphones,
   LayoutDashboard,
   LoaderCircle,
@@ -22,6 +23,7 @@ import {
   Plus,
   Recycle,
   RefreshCw,
+  Save,
   Search,
   ShieldCheck,
   Smartphone,
@@ -54,8 +56,10 @@ type BookingRecord = {
   pickup_time: string;
   items: Record<ItemKey, number>;
   notes?: string | null;
+  admin_notes?: string | null;
   status: "pending" | "confirmed" | "completed" | "cancelled";
   created_at: string;
+  updated_at?: string;
 };
 
 const itemConfig: Record<ItemKey, { label: string; Icon: typeof Smartphone }> = {
@@ -329,7 +333,7 @@ function AdminApp() {
   const loadBookings = async () => {
     setLoading(true); setError("");
     try {
-      const response = await fetch(`/api/admin/bookings?status=${status}`, { credentials: "include" });
+      const response = await fetch("/api/admin/bookings", { credentials: "include" });
       if (response.status === 401) { setAuthenticated(false); setBookings([]); return; }
       const result = await readApiResponse<{ bookings?: BookingRecord[]; error?: string }>(response);
       if (!response.ok) throw new Error(result.error || "โหลดข้อมูลไม่สำเร็จ");
@@ -338,7 +342,7 @@ function AdminApp() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { void loadBookings(); }, [status]);
+  useEffect(() => { void loadBookings(); }, []);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault(); setLoading(true); setError("");
@@ -351,7 +355,41 @@ function AdminApp() {
   };
 
   const logout = async () => { await fetch("/api/admin/logout", { method: "POST", credentials: "include" }); setAuthenticated(false); setBookings([]); };
-  const visibleBookings = bookings.filter((booking) => `${booking.booking_ref} ${booking.customer_name} ${booking.customer_phone}`.toLowerCase().includes(query.toLowerCase()));
+  const visibleBookings = bookings.filter((booking) => (status === "all" || booking.status === status) && `${booking.booking_ref} ${booking.customer_name} ${booking.customer_phone}`.toLowerCase().includes(query.toLowerCase()));
+
+  const updateBookingInState = (updated: BookingRecord) => {
+    setBookings((current) => current.map((booking) => booking.id === updated.id ? updated : booking));
+    setSelectedBooking(updated);
+  };
+
+  const exportCsv = () => {
+    const csvCell = (value: unknown) => {
+      let text = String(value ?? "").replace(/\r?\n/g, " ");
+      if (/^[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const rows = visibleBookings.map((booking) => [
+      booking.booking_ref,
+      booking.customer_name,
+      booking.customer_phone,
+      booking.pickup_date,
+      booking.pickup_time,
+      statusText[booking.status],
+      Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0),
+      booking.pickup_address,
+      booking.notes,
+      booking.admin_notes,
+      booking.created_at,
+    ]);
+    const header = ["เลขนัดหมาย", "ชื่อผู้ติดต่อ", "เบอร์โทร", "วันที่รับ", "ช่วงเวลา", "สถานะ", "จำนวนชิ้น", "สถานที่รับ", "หมายเหตุผู้ใช้", "หมายเหตุภายใน", "วันที่สร้าง"];
+    const csv = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `e-waste-bookings-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (authenticated === null || (loading && !authenticated)) return <div className="fullscreen-loader"><LoaderCircle className="spin" /><span>กำลังตรวจสอบระบบ</span></div>;
   if (!authenticated) return (
@@ -362,7 +400,7 @@ function AdminApp() {
     <div className="admin-page">
       <header className="admin-header"><Brand /><div><a href="/"><UserRound /> หน้าผู้ใช้งาน</a><button onClick={logout}><LogOut /> ออกจากระบบ</button></div></header>
       <main className="admin-workspace">
-        <section className="admin-title"><div><span className="eyebrow">ADMIN DASHBOARD</span><h1>รายการนัดรับขยะ</h1><p>ข้อมูลล่าสุดจากระบบฐานข้อมูล</p></div><Button variant="outline" onClick={loadBookings} disabled={loading}><RefreshCw className={loading ? "spin" : ""} /> รีเฟรชข้อมูล</Button></section>
+        <section className="admin-title"><div><span className="eyebrow">ADMIN DASHBOARD</span><h1>รายการนัดรับขยะ</h1><p>ข้อมูลล่าสุดจากระบบฐานข้อมูล</p></div><div className="admin-title-actions"><Button variant="outline" onClick={exportCsv} disabled={visibleBookings.length === 0}><FileDown /> ส่งออก CSV</Button><Button variant="outline" onClick={loadBookings} disabled={loading}><RefreshCw className={loading ? "spin" : ""} /> รีเฟรชข้อมูล</Button></div></section>
         <section className="stats-row"><div><ClipboardList /><span><small>รายการทั้งหมด</small><strong>{bookings.length}</strong></span></div><div><Clock3 /><span><small>รอตรวจสอบ</small><strong>{bookings.filter((item) => item.status === "pending").length}</strong></span></div><div><PackageCheck /><span><small>รับขยะแล้ว</small><strong>{bookings.filter((item) => item.status === "completed").length}</strong></span></div></section>
         <section className="admin-panel">
           <div className="table-tools"><div className="search-box"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขนัดหมาย ชื่อ หรือเบอร์โทร" /></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">ทุกสถานะ</option><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></div>
@@ -370,12 +408,19 @@ function AdminApp() {
           <div className="table-scroll"><table><thead><tr><th>เลขนัดหมาย</th><th>ผู้ติดต่อ</th><th>วันและเวลา</th><th>รายการ</th><th>สถานที่รับ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>{visibleBookings.map((booking) => <tr key={booking.id ?? booking.booking_ref}><td><strong>{booking.booking_ref}</strong><small>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(booking.created_at))}</small></td><td><strong>{booking.customer_name}</strong><small>{booking.customer_phone}</small></td><td><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><small>{booking.pickup_time}</small></td><td><strong>{Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0)} ชิ้น</strong><small>{(Object.keys(booking.items) as ItemKey[]).filter((key) => booking.items[key] > 0).map((key) => itemConfig[key]?.label).join(", ")}</small></td><td className="address-cell">{booking.pickup_address}</td><td><span className={`status ${booking.status}`}>{statusText[booking.status]}</span></td><td><button className="detail-button" onClick={() => setSelectedBooking(booking)}>ดูรายละเอียด <ChevronRight /></button></td></tr>)}</tbody></table>{!loading && visibleBookings.length === 0 && <div className="empty-state"><LayoutDashboard /><h3>ยังไม่มีรายการนัดรับ</h3><p>รายการที่ผู้ใช้ส่งเข้ามาจะแสดงในหน้านี้</p></div>}</div>
         </section>
       </main>
-      {selectedBooking && <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
+      {selectedBooking && <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} onSaved={updateBookingInState} />}
     </div>
   );
 }
 
-function BookingDetailModal({ booking, onClose }: { booking: BookingRecord; onClose: () => void }) {
+function BookingDetailModal({ booking, onClose, onSaved }: { booking: BookingRecord; onClose: () => void; onSaved: (booking: BookingRecord) => void }) {
+  const [editStatus, setEditStatus] = useState(booking.status);
+  const [editDate, setEditDate] = useState(booking.pickup_date);
+  const [editTime, setEditTime] = useState(booking.pickup_time);
+  const [adminNotes, setAdminNotes] = useState(booking.admin_notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saved, setSaved] = useState(false);
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -383,6 +428,27 @@ function BookingDetailModal({ booking, onClose }: { booking: BookingRecord; onCl
     window.addEventListener("keydown", onKeyDown);
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
   }, [onClose]);
+
+  const saveChanges = async () => {
+    if (!booking.id) return setSaveError("ไม่พบรหัสรายการสำหรับแก้ไข");
+    setSaving(true); setSaveError(""); setSaved(false);
+    try {
+      const response = await fetch("/api/admin/bookings", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: booking.id, status: editStatus, pickupDate: editDate, pickupTime: editTime, adminNotes }),
+      });
+      const result = await readApiResponse<{ booking?: BookingRecord; error?: string }>(response);
+      if (!response.ok || !result.booking) throw new Error(result.error || "บันทึกการเปลี่ยนแปลงไม่สำเร็จ");
+      onSaved(result.booking);
+      setSaved(true);
+    } catch (updateError) {
+      setSaveError(updateError instanceof Error ? updateError.message : "บันทึกการเปลี่ยนแปลงไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const totalItems = Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0);
   return (
@@ -397,6 +463,18 @@ function BookingDetailModal({ booking, onClose }: { booking: BookingRecord; onCl
           <section className="detail-section address-detail-section"><div className="detail-heading"><div><MapPin /><span><small>สถานที่รับ</small><strong>{booking.pickup_address || "-"}</strong></span></div></div></section>
           <section className="detail-section"><div className="detail-heading"><div><PackageCheck /><span><small>รายการขยะ</small><strong>ทั้งหมด {totalItems} ชิ้น</strong></span></div></div><div className="detail-items">{(Object.keys(booking.items) as ItemKey[]).filter((key) => Number(booking.items[key]) > 0).map((key) => { const Icon = itemConfig[key].Icon; return <div key={key}><span><Icon /></span><strong>{itemConfig[key].label}</strong><b>{booking.items[key]}</b></div>; })}</div></section>
           <section className="detail-section note-section"><small>หมายเหตุจากผู้ใช้งาน</small><p>{booking.notes || "ไม่มีหมายเหตุเพิ่มเติม"}</p></section>
+          <section className="admin-edit-section">
+            <div className="admin-edit-heading"><div><ShieldCheck /><span><strong>จัดการรายการนัดรับ</strong><small>การแก้ไขส่วนนี้จะแสดงสถานะและวันนัดใหม่ให้ผู้ใช้เห็น</small></span></div></div>
+            <div className="admin-edit-grid">
+              <label><span>สถานะงาน</span><select value={editStatus} onChange={(event) => setEditStatus(event.target.value as BookingRecord["status"])}><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></label>
+              <label><span>วันที่เข้ารับ</span><input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} /></label>
+              <label><span>ช่วงเวลา</span><select value={editTime} onChange={(event) => setEditTime(event.target.value)}><option value="09:00–12:00">09:00–12:00</option><option value="13:00–16:00">13:00–16:00</option></select></label>
+              <label className="full"><span>หมายเหตุภายในสำหรับเจ้าหน้าที่</span><textarea value={adminNotes} onChange={(event) => setAdminNotes(event.target.value)} rows={3} maxLength={2000} placeholder="เช่น ติดต่อแล้ว ลูกค้าขอให้โทรก่อนถึง 15 นาที" /><small>ข้อมูลนี้ไม่แสดงให้ผู้ใช้งานเห็น</small></label>
+            </div>
+            {saveError && <div className="form-error"><CircleAlert />{saveError}</div>}
+            {saved && <div className="save-success"><Check /> บันทึกการเปลี่ยนแปลงแล้ว</div>}
+            <div className="admin-edit-actions"><Button onClick={saveChanges} disabled={saving || !editDate}>{saving ? <LoaderCircle className="spin" /> : <Save />} บันทึกการเปลี่ยนแปลง</Button></div>
+          </section>
           <footer className="modal-footer"><span>สร้างรายการเมื่อ {new Intl.DateTimeFormat("th-TH", { dateStyle: "long", timeStyle: "short" }).format(new Date(booking.created_at))}</span><Button variant="outline" onClick={onClose}>ปิดหน้าต่าง</Button></footer>
         </div>
       </section>

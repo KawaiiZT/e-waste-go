@@ -10,10 +10,14 @@ create table if not exists public.bookings (
   pickup_time text not null check (pickup_time in ('09:00–12:00', '13:00–16:00')),
   items jsonb not null,
   notes text,
+  admin_notes text,
   status text not null default 'pending' check (status in ('pending', 'confirmed', 'completed', 'cancelled')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- รองรับ Project เดิมที่สร้างตารางก่อนมีฟิลด์หมายเหตุภายใน
+alter table public.bookings add column if not exists admin_notes text;
 
 create index if not exists bookings_created_at_idx on public.bookings (created_at desc);
 create index if not exists bookings_pickup_date_idx on public.bookings (pickup_date);

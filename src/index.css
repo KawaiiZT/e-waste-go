@@ -308,6 +308,7 @@ td > small { margin-top: 3px; overflow: hidden; color: #7c8b84; font-size: .65re
 .admin-title p { color: #b9d2c9; }
 .admin-title .eyebrow { color: #62db96; }
 .admin-title button { border-color: rgba(255,255,255,.24); background: rgba(255,255,255,.1); color: #fff; }
+.admin-title-actions { display: flex; align-items: center; gap: 9px; }
 .stats-row > div { border-radius: 19px; box-shadow: 0 8px 25px rgba(21,65,49,.045); }
 .detail-button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b8dec8; border-radius: 9px; padding: 7px 9px; background: #effaf3; color: #087a42; font-size: .68rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
 .detail-button svg { width: 14px; }
@@ -343,6 +344,25 @@ td > small { margin-top: 3px; overflow: hidden; color: #7c8b84; font-size: .65re
 .detail-items b { color: #087a42; }
 .note-section { padding: 15px 16px; }
 .note-section p { margin: 5px 0 0; color: #38574b; font-size: .78rem; line-height: 1.6; white-space: pre-wrap; }
+.admin-edit-section { margin-top: 13px; border: 1px solid #cfe1d5; border-radius: 18px; padding: 16px; background: #edf8f1; }
+.admin-edit-heading { margin-bottom: 14px; }
+.admin-edit-heading > div { display: flex; align-items: center; gap: 10px; }
+.admin-edit-heading svg { width: 21px; color: #0a9950; }
+.admin-edit-heading span { display: grid; }
+.admin-edit-heading strong { color: #153e30; font-size: .86rem; }
+.admin-edit-heading small { color: #6f8178; font-size: .68rem; }
+.admin-edit-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.admin-edit-grid label { min-width: 0; }
+.admin-edit-grid label.full { grid-column: 1 / -1; }
+.admin-edit-grid select, .admin-edit-grid input, .admin-edit-grid textarea { width: 100%; border: 1px solid #cdded3; border-radius: 11px; background: #fff; color: #23473a; outline: none; }
+.admin-edit-grid select, .admin-edit-grid input { height: 43px; padding: 0 11px; font-size: .76rem; }
+.admin-edit-grid textarea { resize: vertical; padding: 10px 11px; font-size: .76rem; line-height: 1.55; }
+.admin-edit-grid select:focus, .admin-edit-grid input:focus, .admin-edit-grid textarea:focus { border-color: #16ad5c; box-shadow: 0 0 0 3px rgba(12,169,86,.11); }
+.admin-edit-grid label > small { color: #75867d; font-size: .64rem; }
+.admin-edit-actions { display: flex; justify-content: flex-end; margin-top: 13px; }
+.admin-edit-actions button { min-width: 205px; border-radius: 11px; }
+.save-success { display: flex; align-items: center; gap: 7px; margin-top: 12px; border: 1px solid #9bd3b1; border-radius: 11px; padding: 9px 11px; background: #e3f8ea; color: #087943; font-size: .72rem; font-weight: 700; }
+.save-success svg { width: 17px; }
 .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 13px; border-top: 1px solid #dae5dd; padding-top: 16px; color: #76877f; font-size: .68rem; }
 .modal-footer button { border-radius: 10px; }
 @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
@@ -368,7 +388,10 @@ td > small { margin-top: 3px; overflow: hidden; color: #7c8b84; font-size: .65re
   .calendar-day { height: 42px; border-radius: 11px; font-size: .76rem; }
   .calendar-legend { gap: 10px; margin-inline: -8px; padding: 11px 8px; font-size: .64rem; }
   .time-picker { padding: 14px; }
-  .detail-grid, .detail-items { grid-template-columns: 1fr; }
+  .detail-grid, .detail-items, .admin-edit-grid { grid-template-columns: 1fr; }
+  .admin-edit-grid label.full { grid-column: auto; }
+  .admin-title-actions { width: 100%; flex-wrap: wrap; }
+  .admin-title-actions button { flex: 1; }
   .modal-backdrop { align-items: end; padding: 0; }
   .booking-modal { max-height: 94vh; border-radius: 24px 24px 0 0; }
   .modal-content { max-height: calc(94vh - 104px); }

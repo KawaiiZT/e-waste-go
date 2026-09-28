@@ -71,6 +71,18 @@ const statusText = {
   cancelled: "ยกเลิก",
 };
 
+async function readApiResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) return response.json() as Promise<T>;
+
+  const detail = (await response.text()).trim();
+  throw new Error(
+    response.status >= 500
+      ? "ระบบเซิร์ฟเวอร์ขัดข้อง กรุณาตรวจสอบ Vercel Function Logs และ Environment Variables"
+      : detail || `เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (${response.status})`,
+  );
+}
+
 function Brand() {
   return (
     <a href="/" className="brand" aria-label="E-Waste Go หน้าแรก">
@@ -133,7 +145,7 @@ function UserApp() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...form, items, pickupDate: toIsoDate(selectedDate), pickupTime: timeSlot }),
       });
-      const result = await response.json() as { booking?: BookingRecord; error?: string };
+      const result = await readApiResponse<{ booking?: BookingRecord; error?: string }>(response);
       if (!response.ok || !result.booking) throw new Error(result.error || "บันทึกนัดหมายไม่สำเร็จ");
       setCreatedBooking(result.booking);
       setView("success");
@@ -230,7 +242,7 @@ function LookupView() {
     setLoading(true); setError(""); setBooking(null);
     try {
       const response = await fetch(`/api/bookings?reference=${encodeURIComponent(reference)}&phone=${encodeURIComponent(phone)}`);
-      const result = await response.json() as { booking?: BookingRecord; error?: string };
+      const result = await readApiResponse<{ booking?: BookingRecord; error?: string }>(response);
       if (!response.ok || !result.booking) throw new Error(result.error || "ไม่พบข้อมูล");
       setBooking(result.booking);
     } catch (lookupError) { setError(lookupError instanceof Error ? lookupError.message : "ไม่สามารถตรวจสอบได้"); }
@@ -273,7 +285,7 @@ function AdminApp() {
     try {
       const response = await fetch(`/api/admin/bookings?status=${status}`, { credentials: "include" });
       if (response.status === 401) { setAuthenticated(false); setBookings([]); return; }
-      const result = await response.json() as { bookings?: BookingRecord[]; error?: string };
+      const result = await readApiResponse<{ bookings?: BookingRecord[]; error?: string }>(response);
       if (!response.ok) throw new Error(result.error || "โหลดข้อมูลไม่สำเร็จ");
       setBookings(result.bookings ?? []); setAuthenticated(true);
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "เกิดข้อผิดพลาด"); }
@@ -286,7 +298,7 @@ function AdminApp() {
     event.preventDefault(); setLoading(true); setError("");
     try {
       const response = await fetch("/api/admin/login", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) });
-      const result = await response.json() as { error?: string };
+      const result = await readApiResponse<{ error?: string }>(response);
       if (!response.ok) throw new Error(result.error || "เข้าสู่ระบบไม่สำเร็จ");
       setPassword(""); await loadBookings();
     } catch (loginError) { setError(loginError instanceof Error ? loginError.message : "เข้าสู่ระบบไม่สำเร็จ"); setLoading(false); }

@@ -97,3 +97,17 @@ supabase/
 - ตั้ง Rate Limiting หรือ Firewall Rule ให้ `/api/bookings`
 - สำรองฐานข้อมูลตามรอบเวลาที่เหมาะสม
 - ทดสอบบนโดเมนจริงก่อนประชาสัมพันธ์
+
+## แก้ปัญหา API ตอบกลับไม่ใช่ JSON
+
+หากหน้าเว็บแจ้งว่าเซิร์ฟเวอร์ขัดข้อง ให้เปิด `https://โดเมนของคุณ/api/health`
+ซึ่งควรตอบกลับเป็น JSON ดังนี้:
+
+```json
+{"ok":true,"service":"e-waste-go"}
+```
+
+ถ้า Health API ไม่ทำงาน ให้เปิด **Vercel > Project > Logs** แล้วเลือก Runtime Logs
+ของ request ที่ล้มเหลว หาก Health API ทำงานแต่บันทึกนัดหมายไม่ได้ ให้ตรวจสอบว่า Environment
+Variables `SUPABASE_URL` และ `SUPABASE_SECRET_KEY` ถูกเพิ่มใน Environment ของ Deployment
+แล้ว จากนั้นกด Redeploy อีกครั้ง

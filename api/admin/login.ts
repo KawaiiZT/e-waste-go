@@ -1,7 +1,7 @@
 import { adminCookie, createAdminSession, isAdminPasswordValid } from "../../server/session";
 import { json } from "../../server/http";
 
-export async function POST(request: Request) {
+async function login(request: Request) {
   try {
     const body = (await request.json()) as { password?: unknown };
     if (typeof body.password !== "string" || !isAdminPasswordValid(body.password)) {
@@ -12,3 +12,10 @@ export async function POST(request: Request) {
     return json({ error: "ไม่สามารถเข้าสู่ระบบได้" }, 500);
   }
 }
+
+export default {
+  fetch(request: Request) {
+    if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, { allow: "POST" });
+    return login(request);
+  },
+};

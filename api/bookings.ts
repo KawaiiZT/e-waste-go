@@ -31,7 +31,7 @@ function validateItems(value: unknown): ItemCounts | null {
   return Object.values(result).some((count) => count > 0) ? result : null;
 }
 
-export async function POST(request: Request) {
+async function createBooking(request: Request) {
   try {
     const body = (await request.json()) as BookingInput;
     if (body.website) return json({ error: "Invalid submission" }, 400);
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+async function lookupBooking(request: Request) {
   try {
     const url = new URL(request.url);
     const reference = cleanText(url.searchParams.get("reference"), 24).toUpperCase();
@@ -99,3 +99,11 @@ export async function GET(request: Request) {
     return json({ error: errorMessage(error) }, 500);
   }
 }
+
+export default {
+  fetch(request: Request) {
+    if (request.method === "POST") return createBooking(request);
+    if (request.method === "GET") return lookupBooking(request);
+    return json({ error: "Method not allowed" }, 405, { allow: "GET, POST" });
+  },
+};

@@ -1,5 +1,8 @@
 import { json } from "../server/http";
 
-export function GET() {
-  return json({ ok: true, service: "e-waste-go" });
-}
+export default {
+  fetch(request: Request) {
+    if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, { allow: "GET" });
+    return json({ ok: true, service: "e-waste-go" });
+  },
+};

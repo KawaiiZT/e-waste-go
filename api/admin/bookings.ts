@@ -2,7 +2,7 @@ import { json, errorMessage } from "../../server/http";
 import { isAdminRequest } from "../../server/session";
 import { supabaseRequest } from "../../server/supabase";
 
-export async function GET(request: Request) {
+async function listBookings(request: Request) {
   if (!isAdminRequest(request)) return json({ error: "กรุณาเข้าสู่ระบบ" }, 401);
   try {
     const url = new URL(request.url);
@@ -20,3 +20,10 @@ export async function GET(request: Request) {
     return json({ error: errorMessage(error) }, 500);
   }
 }
+
+export default {
+  fetch(request: Request) {
+    if (request.method !== "GET") return json({ error: "Method not allowed" }, 405, { allow: "GET" });
+    return listBookings(request);
+  },
+};

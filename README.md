@@ -2,7 +2,7 @@
 
 ระบบนัดรับขยะอิเล็กทรอนิกส์สำหรับใช้งานบนคอมพิวเตอร์ ประกอบด้วยฝั่งผู้ใช้งาน ฝั่งเจ้าหน้าที่ API และฐานข้อมูลจริง
 
-เวอร์ชันปัจจุบัน: `1.1.0` (UI แบบ Delivery, Admin Booking Detail และ Google Maps Embed)
+เวอร์ชันปัจจุบัน: `1.1.1` (UI แบบ Delivery และ Admin Booking Detail)
 
 ## ความสามารถ
 
@@ -39,7 +39,6 @@ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SECRET_KEY=sb_secret_REPLACE_ME
 ADMIN_PASSWORD=CHANGE_TO_A_LONG_RANDOM_PASSWORD
 SESSION_SECRET=CHANGE_TO_AT_LEAST_32_RANDOM_CHARACTERS
-VITE_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_EMBED_API_KEY
 ```
 
 สร้าง `SESSION_SECRET` ด้วยคำสั่ง:
@@ -47,18 +46,6 @@ VITE_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_EMBED_API_KEY
 ```bash
 openssl rand -base64 48
 ```
-
-### ตั้งค่า Google Maps
-
-1. สร้างหรือเลือก Project ใน Google Cloud Console
-2. เปิดใช้งาน **Maps Embed API**
-3. สร้าง API key แยกสำหรับเว็บไซต์นี้
-4. ตั้ง Application restriction เป็น **Websites** และเพิ่มโดเมน Vercel/โดเมนจริง
-5. ตั้ง API restriction ให้ใช้ได้เฉพาะ **Maps Embed API**
-6. เพิ่ม key ใน Vercel ด้วยชื่อ `VITE_GOOGLE_MAPS_API_KEY` แล้ว Redeploy
-
-ตัวแปรที่ขึ้นต้นด้วย `VITE_` จะถูกส่งไปยังเบราว์เซอร์ จึงต้องจำกัดโดเมนและ API ที่ key ใช้งานได้เสมอ
-หากยังไม่เพิ่ม key ระบบจองยังใช้งานได้ และจะแสดงปุ่มเปิดตำแหน่งใน Google Maps แทนแผนที่ฝัง
 
 ## 3. เปิดบนเครื่อง
 
@@ -83,7 +70,7 @@ vercel dev
 1. นำโฟลเดอร์โปรเจกต์ขึ้น GitHub
 2. Import Repository ใน Vercel
 3. Framework Preset เลือก **Vite**
-4. เพิ่ม Environment Variables 4 ค่าหลัก และ `VITE_GOOGLE_MAPS_API_KEY` หากต้องการแผนที่ฝัง
+4. เพิ่ม Environment Variables ทั้ง 4 ค่า
 5. กด Deploy
 6. ทดลองสร้างนัดหมายจาก `/`
 7. เปิด `/admin` และล็อกอินด้วยค่า `ADMIN_PASSWORD`

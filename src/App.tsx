@@ -9,7 +9,6 @@ import {
   ClipboardList,
   Clock3,
   Computer,
-  ExternalLink,
   Headphones,
   LayoutDashboard,
   LoaderCircle,
@@ -74,44 +73,6 @@ const statusText = {
   cancelled: "ยกเลิก",
 };
 
-const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
-
-function useDebouncedValue<T>(value: T, delay = 650) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
-
-function GoogleMapEmbed({ address, compact = false }: { address?: string; compact?: boolean }) {
-  const cleanAddress = address?.trim() ?? "";
-  const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`;
-
-  if (cleanAddress.length < 5) {
-    return <div className={`map-placeholder${compact ? " compact" : ""}`}><MapPin /><span>กรอกที่อยู่เพื่อแสดงตำแหน่งบนแผนที่</span></div>;
-  }
-
-  if (!googleMapsApiKey) {
-    return (
-      <div className={`map-placeholder map-fallback${compact ? " compact" : ""}`}>
-        <MapPin />
-        <div><strong>ตำแหน่งจุดรับ</strong><span>เพิ่ม Google Maps API key เพื่อแสดงแผนที่ภายในระบบ</span></div>
-        <a href={searchUrl} target="_blank" rel="noreferrer">เปิด Google Maps <ExternalLink /></a>
-      </div>
-    );
-  }
-
-  const embedUrl = `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsApiKey)}&q=${encodeURIComponent(cleanAddress)}&language=th&region=TH`;
-  return (
-    <div className={`google-map${compact ? " compact" : ""}`}>
-      <iframe title={`แผนที่ ${cleanAddress}`} src={embedUrl} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
-      <a href={searchUrl} target="_blank" rel="noreferrer">เปิดแผนที่เต็ม <ExternalLink /></a>
-    </div>
-  );
-}
-
 async function readApiResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) return response.json() as Promise<T>;
@@ -167,7 +128,6 @@ function UserApp() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [createdBooking, setCreatedBooking] = useState<BookingRecord | null>(null);
-  const mapAddress = useDebouncedValue(form.pickupAddress);
 
   const totalItems = Object.values(items).reduce((sum, count) => sum + count, 0);
   const dateLabel = new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(selectedDate);
@@ -223,7 +183,6 @@ function UserApp() {
                   <label><span>ชื่อผู้ติดต่อ *</span><div className="input-wrap"><UserRound /><input value={form.customerName} onChange={(event) => updateForm("customerName", event.target.value)} placeholder="ชื่อ-นามสกุล" autoComplete="name" /></div></label>
                   <label><span>เบอร์โทรศัพท์ *</span><div className="input-wrap"><Phone /><input value={form.customerPhone} onChange={(event) => updateForm("customerPhone", event.target.value)} placeholder="08XXXXXXXX" inputMode="tel" autoComplete="tel" /></div></label>
                   <label className="full"><span>สถานที่รับ *</span><div className="input-wrap textarea"><MapPin /><textarea value={form.pickupAddress} onChange={(event) => updateForm("pickupAddress", event.target.value)} placeholder="บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด และจุดสังเกต" rows={3} autoComplete="street-address" /></div></label>
-                  <div className="full pickup-map-card"><div className="map-card-heading"><span><MapPin /><strong>ตำแหน่งจุดรับ</strong></span><small>แผนที่จะอัปเดตตามที่อยู่ที่กรอก</small></div><GoogleMapEmbed address={mapAddress} compact /></div>
                   <label className="full"><span>หมายเหตุถึงเจ้าหน้าที่</span><textarea className="plain-textarea" value={form.notes} onChange={(event) => updateForm("notes", event.target.value)} placeholder="เช่น กรุณาโทรก่อนเข้ารับ หรือมีอุปกรณ์ชำรุดแตกหัก" rows={2} /></label>
                   <label className="honeypot" aria-hidden="true">Website<input tabIndex={-1} value={form.website} onChange={(event) => updateForm("website", event.target.value)} autoComplete="off" /></label>
                 </div>
@@ -393,7 +352,7 @@ function BookingDetailModal({ booking, onClose }: { booking: BookingRecord; onCl
             <section className="detail-card"><span className="detail-icon"><UserRound /></span><div><small>ผู้ติดต่อ</small><strong>{booking.customer_name || "-"}</strong><a href={`tel:${booking.customer_phone}`}>{booking.customer_phone || "-"}</a></div></section>
             <section className="detail-card"><span className="detail-icon"><CalendarDays /></span><div><small>วันและเวลานัดรับ</small><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><span>{booking.pickup_time}</span></div></section>
           </div>
-          <section className="detail-section"><div className="detail-heading"><div><MapPin /><span><small>สถานที่รับ</small><strong>{booking.pickup_address || "-"}</strong></span></div></div><GoogleMapEmbed address={booking.pickup_address} /></section>
+          <section className="detail-section address-detail-section"><div className="detail-heading"><div><MapPin /><span><small>สถานที่รับ</small><strong>{booking.pickup_address || "-"}</strong></span></div></div></section>
           <section className="detail-section"><div className="detail-heading"><div><PackageCheck /><span><small>รายการขยะ</small><strong>ทั้งหมด {totalItems} ชิ้น</strong></span></div></div><div className="detail-items">{(Object.keys(booking.items) as ItemKey[]).filter((key) => Number(booking.items[key]) > 0).map((key) => { const Icon = itemConfig[key].Icon; return <div key={key}><span><Icon /></span><strong>{itemConfig[key].label}</strong><b>{booking.items[key]}</b></div>; })}</div></section>
           <section className="detail-section note-section"><small>หมายเหตุจากผู้ใช้งาน</small><p>{booking.notes || "ไม่มีหมายเหตุเพิ่มเติม"}</p></section>
           <footer className="modal-footer"><span>สร้างรายการเมื่อ {new Intl.DateTimeFormat("th-TH", { dateStyle: "long", timeStyle: "short" }).format(new Date(booking.created_at))}</span><Button variant="outline" onClick={onClose}>ปิดหน้าต่าง</Button></footer>

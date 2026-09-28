@@ -1,4 +1,4 @@
-import { requiredEnv } from "./env";
+import { requiredEnv } from "./env.js";
 
 const baseHeaders = () => {
   const secret = requiredEnv("SUPABASE_SECRET_KEY");

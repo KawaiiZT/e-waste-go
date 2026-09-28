@@ -1,4 +1,4 @@
-import { json } from "../server/http";
+import { json } from "../server/http.js";
 
 export default {
   fetch(request: Request) {

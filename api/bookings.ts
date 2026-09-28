@@ -1,5 +1,5 @@
-import { errorMessage, json } from "../server/http";
-import { supabaseRequest } from "../server/supabase";
+import { errorMessage, json } from "../server/http.js";
+import { supabaseRequest } from "../server/supabase.js";
 
 type BookingInput = {
   customerName?: unknown;

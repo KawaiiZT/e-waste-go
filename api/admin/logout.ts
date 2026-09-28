@@ -1,5 +1,5 @@
-import { adminCookie } from "../../server/session";
-import { json } from "../../server/http";
+import { adminCookie } from "../../server/session.js";
+import { json } from "../../server/http.js";
 
 function logout() {
   return json({ authenticated: false }, 200, { "set-cookie": adminCookie("", 0) });

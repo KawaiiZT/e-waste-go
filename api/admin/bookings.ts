@@ -1,6 +1,6 @@
-import { json, errorMessage } from "../../server/http";
-import { isAdminRequest } from "../../server/session";
-import { supabaseRequest } from "../../server/supabase";
+import { json, errorMessage } from "../../server/http.js";
+import { isAdminRequest } from "../../server/session.js";
+import { supabaseRequest } from "../../server/supabase.js";
 
 async function listBookings(request: Request) {
   if (!isAdminRequest(request)) return json({ error: "กรุณาเข้าสู่ระบบ" }, 401);

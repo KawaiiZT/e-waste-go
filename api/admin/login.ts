@@ -1,5 +1,5 @@
-import { adminCookie, createAdminSession, isAdminPasswordValid } from "../../server/session";
-import { json } from "../../server/http";
+import { adminCookie, createAdminSession, isAdminPasswordValid } from "../../server/session.js";
+import { json } from "../../server/http.js";
 
 async function login(request: Request) {
   try {

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { requiredEnv } from "./env";
+import { requiredEnv } from "./env.js";
 
 const COOKIE_NAME = "ewaste_admin_session";
 

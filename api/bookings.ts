@@ -4,7 +4,9 @@ import { supabaseRequest } from "../server/supabase.js";
 type BookingInput = {
   customerName?: unknown;
   customerPhone?: unknown;
-  pickupAddress?: unknown;
+  pickupDetails?: unknown;
+  pickupLat?: unknown;
+  pickupLng?: unknown;
   pickupDate?: unknown;
   pickupTime?: unknown;
   notes?: unknown;
@@ -16,6 +18,11 @@ type ItemCounts = { phone: number; laptop: number; accessory: number; appliance:
 
 function cleanText(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function validCoordinate(value: unknown, min: number, max: number) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) && number >= min && number <= max ? number : null;
 }
 
 function validateItems(value: unknown): ItemCounts | null {
@@ -38,7 +45,9 @@ async function createBooking(request: Request) {
 
     const customerName = cleanText(body.customerName, 120);
     const customerPhone = cleanText(body.customerPhone, 20).replace(/[^0-9+]/g, "");
-    const pickupAddress = cleanText(body.pickupAddress, 500);
+    const pickupDetails = cleanText(body.pickupDetails, 500);
+    const pickupLat = validCoordinate(body.pickupLat, -90, 90);
+    const pickupLng = validCoordinate(body.pickupLng, -180, 180);
     const pickupDate = cleanText(body.pickupDate, 10);
     const pickupTime = cleanText(body.pickupTime, 20);
     const notes = cleanText(body.notes, 1000);
@@ -46,7 +55,7 @@ async function createBooking(request: Request) {
 
     if (customerName.length < 2) return json({ error: "กรุณากรอกชื่อผู้ติดต่อ" }, 422);
     if (!/^0[0-9]{8,9}$/.test(customerPhone)) return json({ error: "กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง" }, 422);
-    if (pickupAddress.length < 10) return json({ error: "กรุณากรอกสถานที่รับโดยละเอียด" }, 422);
+    if (pickupLat === null || pickupLng === null) return json({ error: "กรุณาเลือกตำแหน่งจุดรับบนแผนที่" }, 422);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(pickupDate)) return json({ error: "วันที่รับไม่ถูกต้อง" }, 422);
     const selectedDate = new Date(`${pickupDate}T00:00:00+07:00`);
     const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
@@ -61,7 +70,9 @@ async function createBooking(request: Request) {
       body: JSON.stringify({
         customer_name: customerName,
         customer_phone: customerPhone,
-        pickup_address: pickupAddress,
+        pickup_address: pickupDetails || "ตำแหน่งที่เลือกบนแผนที่",
+        pickup_lat: pickupLat,
+        pickup_lng: pickupLng,
         pickup_date: pickupDate,
         pickup_time: pickupTime,
         notes: notes || null,
@@ -86,7 +97,7 @@ async function lookupBooking(request: Request) {
     if (!reference || !phone) return json({ error: "กรุณากรอกเลขนัดหมายและเบอร์โทรศัพท์" }, 422);
 
     const params = new URLSearchParams({
-      select: "booking_ref,status,pickup_date,pickup_time,items,created_at",
+      select: "booking_ref,status,pickup_address,pickup_lat,pickup_lng,pickup_date,pickup_time,items,created_at,updated_at",
       booking_ref: `eq.${reference}`,
       customer_phone: `eq.${phone}`,
       limit: "1",

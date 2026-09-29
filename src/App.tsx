@@ -34,32 +34,18 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { BookingProgress } from "@/components/BookingProgress";
+import { LocationPicker, RouteMap } from "@/components/PickupMap";
+import type { BookingRecord, Coordinates, ItemKey } from "@/types";
 
-type ItemKey = "phone" | "laptop" | "accessory" | "appliance";
 type View = "booking" | "lookup" | "success";
 
 type BookingForm = {
   customerName: string;
   customerPhone: string;
-  pickupAddress: string;
+  pickupDetails: string;
   notes: string;
   website: string;
-};
-
-type BookingRecord = {
-  id?: string;
-  booking_ref: string;
-  customer_name?: string;
-  customer_phone?: string;
-  pickup_address?: string;
-  pickup_date: string;
-  pickup_time: string;
-  items: Record<ItemKey, number>;
-  notes?: string | null;
-  admin_notes?: string | null;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
-  created_at: string;
-  updated_at?: string;
 };
 
 const itemConfig: Record<ItemKey, { label: string; Icon: typeof Smartphone }> = {
@@ -72,6 +58,7 @@ const itemConfig: Record<ItemKey, { label: string; Icon: typeof Smartphone }> = 
 const statusText = {
   pending: "รอตรวจสอบ",
   confirmed: "ยืนยันนัดแล้ว",
+  en_route: "กำลังเดินทาง",
   completed: "รับขยะแล้ว",
   cancelled: "ยกเลิก",
 };
@@ -166,7 +153,8 @@ function UserApp() {
     return date;
   }, []);
   const [view, setView] = useState<View>("booking");
-  const [form, setForm] = useState<BookingForm>({ customerName: "", customerPhone: "", pickupAddress: "", notes: "", website: "" });
+  const [form, setForm] = useState<BookingForm>({ customerName: "", customerPhone: "", pickupDetails: "", notes: "", website: "" });
+  const [pickupLocation, setPickupLocation] = useState<Coordinates | null>(null);
   const [items, setItems] = useState<Record<ItemKey, number>>({ phone: 0, laptop: 0, accessory: 0, appliance: 0 });
   const [selectedDate, setSelectedDate] = useState(tomorrow);
   const [timeSlot, setTimeSlot] = useState("09:00–12:00");
@@ -183,14 +171,15 @@ function UserApp() {
 
   const submitBooking = async () => {
     setError("");
-    if (!form.customerName.trim() || !form.customerPhone.trim() || !form.pickupAddress.trim()) return setError("กรุณากรอกข้อมูลผู้ติดต่อและสถานที่รับให้ครบ");
+    if (!form.customerName.trim() || !form.customerPhone.trim()) return setError("กรุณากรอกชื่อและเบอร์โทรศัพท์ให้ครบ");
+    if (!pickupLocation) return setError("กรุณาเลือกตำแหน่งจุดรับบนแผนที่");
     if (totalItems === 0) return setError("กรุณาเลือกขยะอย่างน้อย 1 ชิ้น");
     setSubmitting(true);
     try {
       const response = await fetch("/api/bookings", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...form, items, pickupDate: toIsoDate(selectedDate), pickupTime: timeSlot }),
+        body: JSON.stringify({ ...form, pickupLat: pickupLocation.lat, pickupLng: pickupLocation.lng, items, pickupDate: toIsoDate(selectedDate), pickupTime: timeSlot }),
       });
       const result = await readApiResponse<{ booking?: BookingRecord; error?: string }>(response);
       if (!response.ok || !result.booking) throw new Error(result.error || "บันทึกนัดหมายไม่สำเร็จ");
@@ -227,7 +216,8 @@ function UserApp() {
                 <div className="form-grid">
                   <label><span>ชื่อผู้ติดต่อ *</span><div className="input-wrap"><UserRound /><input value={form.customerName} onChange={(event) => updateForm("customerName", event.target.value)} placeholder="ชื่อ-นามสกุล" autoComplete="name" /></div></label>
                   <label><span>เบอร์โทรศัพท์ *</span><div className="input-wrap"><Phone /><input value={form.customerPhone} onChange={(event) => updateForm("customerPhone", event.target.value)} placeholder="08XXXXXXXX" inputMode="tel" autoComplete="tel" /></div></label>
-                  <label className="full"><span>สถานที่รับ *</span><div className="input-wrap textarea"><MapPin /><textarea value={form.pickupAddress} onChange={(event) => updateForm("pickupAddress", event.target.value)} placeholder="บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด และจุดสังเกต" rows={3} autoComplete="street-address" /></div></label>
+                  <div className="full"><LocationPicker value={pickupLocation} onChange={setPickupLocation} /></div>
+                  <label className="full"><span>รายละเอียดจุดรับ (ไม่บังคับ)</span><div className="input-wrap"><MapPin /><input value={form.pickupDetails} onChange={(event) => updateForm("pickupDetails", event.target.value)} placeholder="เช่น อาคาร A ชั้น 2 หรือโทรเมื่อถึงหน้าประตู" maxLength={500} /></div></label>
                   <label className="full"><span>หมายเหตุถึงเจ้าหน้าที่</span><textarea className="plain-textarea" value={form.notes} onChange={(event) => updateForm("notes", event.target.value)} placeholder="เช่น กรุณาโทรก่อนเข้ารับ หรือมีอุปกรณ์ชำรุดแตกหัก" rows={2} /></label>
                   <label className="honeypot" aria-hidden="true">Website<input tabIndex={-1} value={form.website} onChange={(event) => updateForm("website", event.target.value)} autoComplete="off" /></label>
                 </div>
@@ -267,6 +257,7 @@ function UserApp() {
               <hr />
               <div className="summary-line"><CalendarDays /><span><small>วันที่รับ</small><strong>{dateLabel}</strong></span></div>
               <div className="summary-line"><Clock3 /><span><small>ช่วงเวลา</small><strong>{timeSlot}</strong></span></div>
+              <div className="summary-line"><MapPin /><span><small>ตำแหน่งรับ</small><strong>{pickupLocation ? "เลือกตำแหน่งแล้ว" : "ยังไม่ได้เลือก"}</strong></span></div>
               {error && <div className="form-error" role="alert"><CircleAlert />{error}</div>}
               <Button className="submit-button" onClick={submitBooking} disabled={submitting}>{submitting ? <><LoaderCircle className="spin" /> กำลังบันทึก</> : <>ส่งคำขอนัดรับ <ArrowRight /></>}</Button>
               <p className="terms-note">เมื่อส่งคำขอ เจ้าหน้าที่จะตรวจสอบและติดต่อกลับเพื่อยืนยันนัดหมาย</p>
@@ -300,13 +291,18 @@ function LookupView() {
 
   return (
     <main className="narrow-workspace">
-      <section className="lookup-card">
-        <span className="large-icon"><Search /></span><h1>ตรวจสอบสถานะนัดรับ</h1><p>กรอกเลขนัดหมายและเบอร์โทรศัพท์ที่ใช้สร้างรายการ</p>
-        <label><span>เลขนัดหมาย</span><input value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} placeholder="เช่น EW12AB34CD" /></label>
-        <label><span>เบอร์โทรศัพท์</span><input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="08XXXXXXXX" inputMode="tel" /></label>
+      <section className={booking ? "lookup-card has-result" : "lookup-card"}>
+        <div className="lookup-heading"><span className="large-icon"><Search /></span><div><h1>ตรวจสอบสถานะนัดรับ</h1><p>กรอกเลขนัดหมายและเบอร์โทรศัพท์ที่ใช้สร้างรายการ</p></div></div>
+        <div className="lookup-form"><label><span>เลขนัดหมาย</span><input value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} placeholder="เช่น EW12AB34CD" /></label><label><span>เบอร์โทรศัพท์</span><input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="08XXXXXXXX" inputMode="tel" /></label><Button onClick={lookup} disabled={loading || !reference || !phone}>{loading ? <LoaderCircle className="spin" /> : <Search />} ตรวจสอบสถานะ</Button></div>
         {error && <div className="form-error"><CircleAlert />{error}</div>}
-        <Button onClick={lookup} disabled={loading || !reference || !phone}>{loading ? <LoaderCircle className="spin" /> : <Search />} ตรวจสอบสถานะ</Button>
-        {booking && <div className="lookup-result"><div><small>เลขนัดหมาย</small><strong>{booking.booking_ref}</strong></div><span className={`status ${booking.status}`}>{statusText[booking.status]}</span><hr /><p><CalendarDays /> {new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</p><p><Clock3 /> {booking.pickup_time}</p></div>}
+        {booking && (
+          <div className="tracking-result">
+            <div className="tracking-header"><div><small>เลขนัดหมาย</small><strong>{booking.booking_ref}</strong></div><span className={`status ${booking.status}`}>{statusText[booking.status]}</span></div>
+            <div className="appointment-summary"><p><CalendarDays /> {new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</p><p><Clock3 /> {booking.pickup_time}</p></div>
+            <section className="tracking-section"><div className="tracking-section-title"><span>ขั้นตอนการเข้ารับ</span><small>อัปเดตตามสถานะล่าสุดจากเจ้าหน้าที่</small></div><BookingProgress status={booking.status} /></section>
+            <section className="tracking-section"><div className="tracking-section-title"><span>Route และจุดรับ</span><small>{booking.pickup_address || "ตำแหน่งที่เลือกบนแผนที่"}</small></div><RouteMap destination={booking.pickup_lat != null && booking.pickup_lng != null ? { lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) } : null} /></section>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -377,11 +373,13 @@ function AdminApp() {
       statusText[booking.status],
       Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0),
       booking.pickup_address,
+      booking.pickup_lat,
+      booking.pickup_lng,
       booking.notes,
       booking.admin_notes,
       booking.created_at,
     ]);
-    const header = ["เลขนัดหมาย", "ชื่อผู้ติดต่อ", "เบอร์โทร", "วันที่รับ", "ช่วงเวลา", "สถานะ", "จำนวนชิ้น", "สถานที่รับ", "หมายเหตุผู้ใช้", "หมายเหตุภายใน", "วันที่สร้าง"];
+    const header = ["เลขนัดหมาย", "ชื่อผู้ติดต่อ", "เบอร์โทร", "วันที่รับ", "ช่วงเวลา", "สถานะ", "จำนวนชิ้น", "รายละเอียดจุดรับ", "ละติจูด", "ลองจิจูด", "หมายเหตุผู้ใช้", "หมายเหตุภายใน", "วันที่สร้าง"];
     const csv = `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n")}`;
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const link = document.createElement("a");
@@ -401,11 +399,11 @@ function AdminApp() {
       <header className="admin-header"><Brand /><div><a href="/"><UserRound /> หน้าผู้ใช้งาน</a><button onClick={logout}><LogOut /> ออกจากระบบ</button></div></header>
       <main className="admin-workspace">
         <section className="admin-title"><div><span className="eyebrow">ADMIN DASHBOARD</span><h1>รายการนัดรับขยะ</h1><p>ข้อมูลล่าสุดจากระบบฐานข้อมูล</p></div><div className="admin-title-actions"><Button variant="outline" onClick={exportCsv} disabled={visibleBookings.length === 0}><FileDown /> ส่งออก CSV</Button><Button variant="outline" onClick={loadBookings} disabled={loading}><RefreshCw className={loading ? "spin" : ""} /> รีเฟรชข้อมูล</Button></div></section>
-        <section className="stats-row"><div><ClipboardList /><span><small>รายการทั้งหมด</small><strong>{bookings.length}</strong></span></div><div><Clock3 /><span><small>รอตรวจสอบ</small><strong>{bookings.filter((item) => item.status === "pending").length}</strong></span></div><div><PackageCheck /><span><small>รับขยะแล้ว</small><strong>{bookings.filter((item) => item.status === "completed").length}</strong></span></div></section>
+        <section className="stats-row"><div><ClipboardList /><span><small>รายการทั้งหมด</small><strong>{bookings.length}</strong></span></div><div><Clock3 /><span><small>รอตรวจสอบ</small><strong>{bookings.filter((item) => item.status === "pending").length}</strong></span></div><div><Truck /><span><small>กำลังเดินทาง</small><strong>{bookings.filter((item) => item.status === "en_route").length}</strong></span></div><div><PackageCheck /><span><small>รับขยะแล้ว</small><strong>{bookings.filter((item) => item.status === "completed").length}</strong></span></div></section>
         <section className="admin-panel">
-          <div className="table-tools"><div className="search-box"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขนัดหมาย ชื่อ หรือเบอร์โทร" /></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">ทุกสถานะ</option><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></div>
+          <div className="table-tools"><div className="search-box"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขนัดหมาย ชื่อ หรือเบอร์โทร" /></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">ทุกสถานะ</option><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="en_route">กำลังเดินทาง</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></div>
           {error && <div className="form-error"><CircleAlert />{error}</div>}
-          <div className="table-scroll"><table><thead><tr><th>เลขนัดหมาย</th><th>ผู้ติดต่อ</th><th>วันและเวลา</th><th>รายการ</th><th>สถานที่รับ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>{visibleBookings.map((booking) => <tr key={booking.id ?? booking.booking_ref}><td><strong>{booking.booking_ref}</strong><small>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(booking.created_at))}</small></td><td><strong>{booking.customer_name}</strong><small>{booking.customer_phone}</small></td><td><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><small>{booking.pickup_time}</small></td><td><strong>{Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0)} ชิ้น</strong><small>{(Object.keys(booking.items) as ItemKey[]).filter((key) => booking.items[key] > 0).map((key) => itemConfig[key]?.label).join(", ")}</small></td><td className="address-cell">{booking.pickup_address}</td><td><span className={`status ${booking.status}`}>{statusText[booking.status]}</span></td><td><button className="detail-button" onClick={() => setSelectedBooking(booking)}>ดูรายละเอียด <ChevronRight /></button></td></tr>)}</tbody></table>{!loading && visibleBookings.length === 0 && <div className="empty-state"><LayoutDashboard /><h3>ยังไม่มีรายการนัดรับ</h3><p>รายการที่ผู้ใช้ส่งเข้ามาจะแสดงในหน้านี้</p></div>}</div>
+          <div className="table-scroll"><table><thead><tr><th>เลขนัดหมาย</th><th>ผู้ติดต่อ</th><th>วันและเวลา</th><th>รายการ</th><th>สถานที่รับ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>{visibleBookings.map((booking) => <tr key={booking.id ?? booking.booking_ref}><td><strong>{booking.booking_ref}</strong><small>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(booking.created_at))}</small></td><td><strong>{booking.customer_name}</strong><small>{booking.customer_phone}</small></td><td><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><small>{booking.pickup_time}</small></td><td><strong>{Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0)} ชิ้น</strong><small>{(Object.keys(booking.items) as ItemKey[]).filter((key) => booking.items[key] > 0).map((key) => itemConfig[key]?.label).join(", ")}</small></td><td className="address-cell"><strong>{booking.pickup_lat != null ? "มีพิกัดบนแผนที่" : "รายการเดิมไม่มีพิกัด"}</strong><small>{booking.pickup_address || "-"}</small></td><td><span className={`status ${booking.status}`}>{statusText[booking.status]}</span></td><td><button className="detail-button" onClick={() => setSelectedBooking(booking)}>ดูรายละเอียด <ChevronRight /></button></td></tr>)}</tbody></table>{!loading && visibleBookings.length === 0 && <div className="empty-state"><LayoutDashboard /><h3>ยังไม่มีรายการนัดรับ</h3><p>รายการที่ผู้ใช้ส่งเข้ามาจะแสดงในหน้านี้</p></div>}</div>
         </section>
       </main>
       {selectedBooking && <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} onSaved={updateBookingInState} />}
@@ -460,13 +458,14 @@ function BookingDetailModal({ booking, onClose, onSaved }: { booking: BookingRec
             <section className="detail-card"><span className="detail-icon"><UserRound /></span><div><small>ผู้ติดต่อ</small><strong>{booking.customer_name || "-"}</strong><a href={`tel:${booking.customer_phone}`}>{booking.customer_phone || "-"}</a></div></section>
             <section className="detail-card"><span className="detail-icon"><CalendarDays /></span><div><small>วันและเวลานัดรับ</small><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "long" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><span>{booking.pickup_time}</span></div></section>
           </div>
-          <section className="detail-section address-detail-section"><div className="detail-heading"><div><MapPin /><span><small>สถานที่รับ</small><strong>{booking.pickup_address || "-"}</strong></span></div></div></section>
+          <section className="detail-section address-detail-section"><div className="detail-heading"><div><MapPin /><span><small>รายละเอียดจุดรับ</small><strong>{booking.pickup_address || "ผู้ใช้เลือกตำแหน่งจากแผนที่"}</strong></span></div></div><RouteMap destination={booking.pickup_lat != null && booking.pickup_lng != null ? { lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) } : null} /></section>
+          <section className="detail-section progress-detail-section"><div className="detail-heading"><div><Truck /><span><small>สถานะการดำเนินงาน</small><strong>{statusText[booking.status]}</strong></span></div></div><BookingProgress status={booking.status} compact /></section>
           <section className="detail-section"><div className="detail-heading"><div><PackageCheck /><span><small>รายการขยะ</small><strong>ทั้งหมด {totalItems} ชิ้น</strong></span></div></div><div className="detail-items">{(Object.keys(booking.items) as ItemKey[]).filter((key) => Number(booking.items[key]) > 0).map((key) => { const Icon = itemConfig[key].Icon; return <div key={key}><span><Icon /></span><strong>{itemConfig[key].label}</strong><b>{booking.items[key]}</b></div>; })}</div></section>
           <section className="detail-section note-section"><small>หมายเหตุจากผู้ใช้งาน</small><p>{booking.notes || "ไม่มีหมายเหตุเพิ่มเติม"}</p></section>
           <section className="admin-edit-section">
             <div className="admin-edit-heading"><div><ShieldCheck /><span><strong>จัดการรายการนัดรับ</strong><small>การแก้ไขส่วนนี้จะแสดงสถานะและวันนัดใหม่ให้ผู้ใช้เห็น</small></span></div></div>
             <div className="admin-edit-grid">
-              <label><span>สถานะงาน</span><select value={editStatus} onChange={(event) => setEditStatus(event.target.value as BookingRecord["status"])}><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></label>
+              <label><span>สถานะงาน</span><select value={editStatus} onChange={(event) => setEditStatus(event.target.value as BookingRecord["status"])}><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="en_route">กำลังเดินทาง</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></label>
               <label><span>วันที่เข้ารับ</span><input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} /></label>
               <label><span>ช่วงเวลา</span><select value={editTime} onChange={(event) => setEditTime(event.target.value)}><option value="09:00–12:00">09:00–12:00</option><option value="13:00–16:00">13:00–16:00</option></select></label>
               <label className="full"><span>หมายเหตุภายในสำหรับเจ้าหน้าที่</span><textarea value={adminNotes} onChange={(event) => setAdminNotes(event.target.value)} rows={3} maxLength={2000} placeholder="เช่น ติดต่อแล้ว ลูกค้าขอให้โทรก่อนถึง 15 นาที" /><small>ข้อมูลนี้ไม่แสดงให้ผู้ใช้งานเห็น</small></label>

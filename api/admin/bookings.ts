@@ -2,8 +2,8 @@ import { json, errorMessage } from "../../server/http.js";
 import { isAdminRequest } from "../../server/session.js";
 import { supabaseRequest } from "../../server/supabase.js";
 
-const bookingSelect = "id,booking_ref,customer_name,customer_phone,pickup_address,pickup_date,pickup_time,items,notes,admin_notes,status,created_at,updated_at";
-const allowedStatuses = ["pending", "confirmed", "completed", "cancelled"] as const;
+const bookingSelect = "id,booking_ref,customer_name,customer_phone,pickup_address,pickup_lat,pickup_lng,pickup_date,pickup_time,items,notes,admin_notes,status,created_at,updated_at";
+const allowedStatuses = ["pending", "confirmed", "en_route", "completed", "cancelled"] as const;
 
 type BookingStatus = typeof allowedStatuses[number];
 type UpdateBookingInput = {

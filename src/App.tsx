@@ -48,12 +48,23 @@ type BookingForm = {
   website: string;
 };
 
-const itemConfig: Record<ItemKey, { label: string; Icon: typeof Smartphone }> = {
+type ItemMeta = { label: string; examples?: string; Icon: typeof Smartphone };
+
+const itemConfig: Record<ItemKey, ItemMeta> = {
+  small: { label: "อุปกรณ์อิเล็กทรอนิกส์ขนาดเล็ก", examples: "ถ่าน, โทรศัพท์, สายชาร์จ", Icon: Smartphone },
+  medium: { label: "อุปกรณ์อิเล็กทรอนิกส์ขนาดกลาง", examples: "Monitor, PC, พัดลม", Icon: Computer },
+  large: { label: "อุปกรณ์อิเล็กทรอนิกส์ขนาดใหญ่", examples: "ตู้เย็น, เครื่องปรับอากาศ (แอร์)", Icon: WashingMachine },
+  other: { label: "อื่น ๆ", examples: "โปรดระบุชนิดอุปกรณ์ในหมายเหตุ", Icon: Recycle },
+};
+
+const legacyItemConfig: Record<string, ItemMeta> = {
   phone: { label: "โทรศัพท์และแท็บเล็ต", Icon: Smartphone },
   laptop: { label: "คอมพิวเตอร์และโน้ตบุ๊ก", Icon: Computer },
   accessory: { label: "สายชาร์จและอุปกรณ์เสริม", Icon: Headphones },
   appliance: { label: "เครื่องใช้ไฟฟ้าขนาดเล็ก", Icon: WashingMachine },
 };
+
+const getItemMeta = (key: string): ItemMeta => itemConfig[key as ItemKey] ?? legacyItemConfig[key] ?? { label: key, Icon: Recycle };
 
 const statusText = {
   pending: "รอตรวจสอบ",
@@ -155,7 +166,7 @@ function UserApp() {
   const [view, setView] = useState<View>("booking");
   const [form, setForm] = useState<BookingForm>({ customerName: "", customerPhone: "", pickupDetails: "", notes: "", website: "" });
   const [pickupLocation, setPickupLocation] = useState<Coordinates | null>(null);
-  const [items, setItems] = useState<Record<ItemKey, number>>({ phone: 0, laptop: 0, accessory: 0, appliance: 0 });
+  const [items, setItems] = useState<Record<ItemKey, number>>({ small: 0, medium: 0, large: 0, other: 0 });
   const [selectedDate, setSelectedDate] = useState(tomorrow);
   const [timeSlot, setTimeSlot] = useState("09:00–12:00");
   const [submitting, setSubmitting] = useState(false);
@@ -227,10 +238,10 @@ function UserApp() {
                 <div className="panel-heading"><span>2</span><div><h2>รายการขยะอิเล็กทรอนิกส์</h2><p>ระบุจำนวนอุปกรณ์ที่ต้องการให้เข้ารับ</p></div></div>
                 <div className="item-grid">
                   {(Object.keys(itemConfig) as ItemKey[]).map((key) => {
-                    const { label, Icon } = itemConfig[key];
+                    const { label, examples, Icon } = itemConfig[key];
                     return (
                       <article key={key} className={items[key] > 0 ? "item-card selected" : "item-card"}>
-                        <span className="item-icon"><Icon /></span><strong>{label}</strong>
+                        <span className="item-icon"><Icon /></span><div className="item-copy"><strong>{label}</strong><small>{examples}</small></div>
                         <div className="quantity"><button disabled={items[key] === 0} aria-label={`ลดจำนวน ${label}`} onClick={() => updateItem(key, -1)}><Minus /></button><output>{items[key]}</output><button aria-label={`เพิ่มจำนวน ${label}`} onClick={() => updateItem(key, 1)}><Plus /></button></div>
                       </article>
                     );
@@ -403,7 +414,7 @@ function AdminApp() {
         <section className="admin-panel">
           <div className="table-tools"><div className="search-box"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาเลขนัดหมาย ชื่อ หรือเบอร์โทร" /></div><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">ทุกสถานะ</option><option value="pending">รอตรวจสอบ</option><option value="confirmed">ยืนยันนัดแล้ว</option><option value="en_route">กำลังเดินทาง</option><option value="completed">รับขยะแล้ว</option><option value="cancelled">ยกเลิก</option></select></div>
           {error && <div className="form-error"><CircleAlert />{error}</div>}
-          <div className="table-scroll"><table><thead><tr><th>เลขนัดหมาย</th><th>ผู้ติดต่อ</th><th>วันและเวลา</th><th>รายการ</th><th>สถานที่รับ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>{visibleBookings.map((booking) => <tr key={booking.id ?? booking.booking_ref}><td><strong>{booking.booking_ref}</strong><small>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(booking.created_at))}</small></td><td><strong>{booking.customer_name}</strong><small>{booking.customer_phone}</small></td><td><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><small>{booking.pickup_time}</small></td><td><strong>{Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0)} ชิ้น</strong><small>{(Object.keys(booking.items) as ItemKey[]).filter((key) => booking.items[key] > 0).map((key) => itemConfig[key]?.label).join(", ")}</small></td><td className="address-cell"><strong>{booking.pickup_lat != null ? "มีพิกัดบนแผนที่" : "รายการเดิมไม่มีพิกัด"}</strong><small>{booking.pickup_address || "-"}</small></td><td><span className={`status ${booking.status}`}>{statusText[booking.status]}</span></td><td><button className="detail-button" onClick={() => setSelectedBooking(booking)}>ดูรายละเอียด <ChevronRight /></button></td></tr>)}</tbody></table>{!loading && visibleBookings.length === 0 && <div className="empty-state"><LayoutDashboard /><h3>ยังไม่มีรายการนัดรับ</h3><p>รายการที่ผู้ใช้ส่งเข้ามาจะแสดงในหน้านี้</p></div>}</div>
+          <div className="table-scroll"><table><thead><tr><th>เลขนัดหมาย</th><th>ผู้ติดต่อ</th><th>วันและเวลา</th><th>รายการ</th><th>สถานที่รับ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>{visibleBookings.map((booking) => <tr key={booking.id ?? booking.booking_ref}><td><strong>{booking.booking_ref}</strong><small>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(booking.created_at))}</small></td><td><strong>{booking.customer_name}</strong><small>{booking.customer_phone}</small></td><td><strong>{new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(new Date(`${booking.pickup_date}T00:00:00`))}</strong><small>{booking.pickup_time}</small></td><td><strong>{Object.values(booking.items).reduce((sum, count) => sum + Number(count), 0)} ชิ้น</strong><small>{Object.keys(booking.items).filter((key) => Number(booking.items[key]) > 0).map((key) => getItemMeta(key).label).join(", ")}</small></td><td className="address-cell"><strong>{booking.pickup_lat != null ? "มีพิกัดบนแผนที่" : "รายการเดิมไม่มีพิกัด"}</strong><small>{booking.pickup_address || "-"}</small></td><td><span className={`status ${booking.status}`}>{statusText[booking.status]}</span></td><td><button className="detail-button" onClick={() => setSelectedBooking(booking)}>ดูรายละเอียด <ChevronRight /></button></td></tr>)}</tbody></table>{!loading && visibleBookings.length === 0 && <div className="empty-state"><LayoutDashboard /><h3>ยังไม่มีรายการนัดรับ</h3><p>รายการที่ผู้ใช้ส่งเข้ามาจะแสดงในหน้านี้</p></div>}</div>
         </section>
       </main>
       {selectedBooking && <BookingDetailModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} onSaved={updateBookingInState} />}
@@ -460,7 +471,7 @@ function BookingDetailModal({ booking, onClose, onSaved }: { booking: BookingRec
           </div>
           <section className="detail-section address-detail-section"><div className="detail-heading"><div><MapPin /><span><small>รายละเอียดจุดรับ</small><strong>{booking.pickup_address || "ผู้ใช้เลือกตำแหน่งจากแผนที่"}</strong></span></div></div><RouteMap destination={booking.pickup_lat != null && booking.pickup_lng != null ? { lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) } : null} /></section>
           <section className="detail-section progress-detail-section"><div className="detail-heading"><div><Truck /><span><small>สถานะการดำเนินงาน</small><strong>{statusText[booking.status]}</strong></span></div></div><BookingProgress status={booking.status} compact /></section>
-          <section className="detail-section"><div className="detail-heading"><div><PackageCheck /><span><small>รายการขยะ</small><strong>ทั้งหมด {totalItems} ชิ้น</strong></span></div></div><div className="detail-items">{(Object.keys(booking.items) as ItemKey[]).filter((key) => Number(booking.items[key]) > 0).map((key) => { const Icon = itemConfig[key].Icon; return <div key={key}><span><Icon /></span><strong>{itemConfig[key].label}</strong><b>{booking.items[key]}</b></div>; })}</div></section>
+          <section className="detail-section"><div className="detail-heading"><div><PackageCheck /><span><small>รายการขยะ</small><strong>ทั้งหมด {totalItems} ชิ้น</strong></span></div></div><div className="detail-items">{Object.keys(booking.items).filter((key) => Number(booking.items[key]) > 0).map((key) => { const meta = getItemMeta(key); const Icon = meta.Icon; return <div key={key}><span><Icon /></span><strong>{meta.label}</strong><b>{booking.items[key]}</b></div>; })}</div></section>
           <section className="detail-section note-section"><small>หมายเหตุจากผู้ใช้งาน</small><p>{booking.notes || "ไม่มีหมายเหตุเพิ่มเติม"}</p></section>
           <section className="admin-edit-section">
             <div className="admin-edit-heading"><div><ShieldCheck /><span><strong>จัดการรายการนัดรับ</strong><small>การแก้ไขส่วนนี้จะแสดงสถานะและวันนัดใหม่ให้ผู้ใช้เห็น</small></span></div></div>

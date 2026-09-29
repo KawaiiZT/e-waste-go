@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { divIcon, LatLngBounds } from "leaflet";
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import { Crosshair, ExternalLink, LoaderCircle, MapPin, Navigation } from "lucide-react";
@@ -34,8 +34,9 @@ function FitRoute({ points }: { points: [number, number][] }) {
 export function LocationPicker({ value, onChange }: { value: Coordinates | null; onChange: (coordinates: Coordinates) => void }) {
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState("");
+  const autoLocated = useRef(false);
 
-  const useCurrentLocation = () => {
+  const useCurrentLocation = useCallback((automatic = false) => {
     if (!navigator.geolocation) return setLocationError("เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง");
     setLocating(true);
     setLocationError("");
@@ -44,19 +45,31 @@ export function LocationPicker({ value, onChange }: { value: Coordinates | null;
         onChange({ lat: position.coords.latitude, lng: position.coords.longitude });
         setLocating(false);
       },
-      () => {
-        setLocationError("ไม่สามารถอ่านตำแหน่งได้ กรุณาอนุญาต Location หรือกดเลือกบนแผนที่");
+      (error) => {
+        if (!automatic || error.code !== error.PERMISSION_DENIED) {
+          setLocationError(error.code === error.PERMISSION_DENIED ? "สิทธิ์ Location ถูกปิด กรุณาอนุญาตจากไอคอนข้างแถบที่อยู่ของเบราว์เซอร์" : "ไม่สามารถอ่านตำแหน่งได้ กรุณาลองอีกครั้งหรือกดเลือกบนแผนที่");
+        }
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
     );
-  };
+  }, [onChange]);
+
+  useEffect(() => {
+    if (!navigator.permissions || autoLocated.current) return;
+    void navigator.permissions.query({ name: "geolocation" }).then((permission) => {
+      if (permission.state === "granted" && !autoLocated.current) {
+        autoLocated.current = true;
+        useCurrentLocation(true);
+      }
+    }).catch(() => undefined);
+  }, [useCurrentLocation]);
 
   return (
     <div className="location-picker">
       <div className="map-toolbar">
         <div><strong>เลือกจุดรับบนแผนที่ *</strong><small>กดบนแผนที่ให้ตรงกับจุดที่ต้องการให้เข้ารับ</small></div>
-        <button type="button" onClick={useCurrentLocation} disabled={locating}>{locating ? <LoaderCircle className="spin" /> : <Crosshair />} ใช้ตำแหน่งปัจจุบัน</button>
+        <button type="button" onClick={() => useCurrentLocation()} disabled={locating}>{locating ? <LoaderCircle className="spin" /> : <Crosshair />} ใช้ตำแหน่งปัจจุบัน</button>
       </div>
       <div className="map-frame location-map">
         <MapContainer center={[value?.lat ?? DEFAULT_CENTER.lat, value?.lng ?? DEFAULT_CENTER.lng]} zoom={value ? 16 : 11} scrollWheelZoom>
@@ -65,7 +78,7 @@ export function LocationPicker({ value, onChange }: { value: Coordinates | null;
           <Recenter coordinates={value} />
           {value && <Marker position={[value.lat, value.lng]} icon={pickupIcon} />}
         </MapContainer>
-        {!value && <div className="map-empty-hint"><MapPin /><span>เลือกตำแหน่งบนแผนที่</span></div>}
+        {!value && <div className="map-location-cta"><button type="button" onClick={() => useCurrentLocation()} disabled={locating}>{locating ? <LoaderCircle className="spin" /> : <Crosshair />}<span><strong>{locating ? "กำลังค้นหาตำแหน่ง" : "ใช้ตำแหน่งของฉัน"}</strong><small>กดครั้งเดียวเพื่อปักหมุดอัตโนมัติ</small></span></button><small>หรือกดเลือกจุดบนแผนที่</small></div>}
       </div>
       <div className="coordinate-row">
         {value ? <><span><MapPin /> เลือกจุดรับแล้ว</span><code>{value.lat.toFixed(6)}, {value.lng.toFixed(6)}</code></> : <span className="not-selected"><MapPin /> ยังไม่ได้เลือกตำแหน่ง</span>}

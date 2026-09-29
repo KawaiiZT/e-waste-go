@@ -97,7 +97,9 @@ label > span { color: #405a50; font-size: .78rem; font-weight: 700; }
 .item-card.selected { border-color: #41bf78; background: #f0fbf4; box-shadow: inset 0 0 0 1px #41bf78; }
 .item-icon { width: 45px; height: 45px; display: grid; place-items: center; border-radius: 14px; background: #e5f8ec; color: #079c4e; }
 .item-icon svg { width: 23px; }
-.item-card > strong { align-self: center; font-size: .77rem; line-height: 1.35; }
+.item-copy { align-self: center; display: grid; gap: 4px; }
+.item-copy strong { font-size: .77rem; line-height: 1.35; }
+.item-copy small { color: #74867d; font-size: .65rem; line-height: 1.4; }
 .quantity { display: grid; grid-template-columns: 30px 28px 30px; align-items: center; gap: 3px; }
 .quantity button { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #d2e0d6; border-radius: 9px; background: #fff; color: #0a9c4f; cursor: pointer; }
 .quantity button:last-child { border-color: #0ca956; background: #0ca956; color: #fff; }
@@ -417,10 +419,18 @@ td > small { margin-top: 3px; overflow: hidden; color: #7c8b84; font-size: .65re
 .map-frame .leaflet-container { width: 100%; height: 100%; z-index: 1; font-family: inherit; }
 .location-map { height: 350px; border-block: 1px solid #d8e6dc; cursor: crosshair; }
 .route-map { height: 320px; border-radius: 14px; }
-.map-empty-hint, .map-loading { position: absolute; z-index: 500; left: 50%; display: flex; align-items: center; gap: 7px; border-radius: 999px; padding: 9px 13px; background: rgba(16,62,47,.92); color: #fff; font-size: .7rem; font-weight: 700; pointer-events: none; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(5,31,22,.2); }
-.map-empty-hint { top: 14px; }
+.map-loading { position: absolute; z-index: 500; left: 50%; display: flex; align-items: center; gap: 7px; border-radius: 999px; padding: 9px 13px; background: rgba(16,62,47,.92); color: #fff; font-size: .7rem; font-weight: 700; pointer-events: none; transform: translateX(-50%); box-shadow: 0 8px 24px rgba(5,31,22,.2); }
 .map-loading { top: 50%; transform: translate(-50%,-50%); }
-.map-empty-hint svg, .map-loading svg { width: 16px; }
+.map-loading svg { width: 16px; }
+.map-location-cta { position: absolute; z-index: 500; left: 50%; top: 50%; display: grid; justify-items: center; gap: 8px; transform: translate(-50%,-50%); }
+.map-location-cta > button { min-width: 270px; display: flex; align-items: center; justify-content: center; gap: 11px; border: 0; border-radius: 16px; padding: 13px 18px; background: #103e2f; color: #fff; cursor: pointer; box-shadow: 0 14px 32px rgba(5,31,22,.3); }
+.map-location-cta > button:hover { background: #0c5139; transform: translateY(-1px); }
+.map-location-cta > button:disabled { opacity: .8; cursor: wait; }
+.map-location-cta > button > svg { width: 23px; color: #77e5a6; }
+.map-location-cta > button > span { display: grid; text-align: left; }
+.map-location-cta strong { font-size: .8rem; }
+.map-location-cta button small { color: #b9d9cd; font-size: .63rem; }
+.map-location-cta > small { border-radius: 999px; padding: 5px 9px; background: rgba(255,255,255,.9); color: #526b61; font-size: .63rem; box-shadow: 0 4px 12px rgba(15,52,39,.12); }
 .coordinate-row { min-height: 45px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; }
 .coordinate-row span { display: inline-flex; align-items: center; gap: 6px; color: #087a42; font-size: .72rem; font-weight: 700; }
 .coordinate-row span.not-selected { color: #8a7460; }
@@ -436,9 +446,9 @@ td > small { margin-top: 3px; overflow: hidden; color: #7c8b84; font-size: .65re
 .lookup-heading { display: flex; align-items: center; gap: 15px; }
 .lookup-heading h1 { margin: 0; }
 .lookup-heading p { margin: 3px 0 0; color: #718178; font-size: .82rem; }
-.lookup-form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 11px; margin-top: 24px; }
+.lookup-form { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 11px; margin-top: 24px; }
 .lookup-form label { margin: 0; }
-.lookup-form button { height: 45px; border-radius: 11px; }
+.lookup-form button { width: 100%; height: 52px; grid-column: 1 / -1; justify-content: center; border-radius: 13px; font-size: .86rem; font-weight: 800; box-shadow: 0 9px 20px rgba(12,169,86,.18); }
 .tracking-result { display: grid; gap: 14px; margin-top: 24px; border-top: 1px solid #e1eae4; padding-top: 20px; }
 .tracking-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .tracking-header > div { display: grid; }
@@ -493,13 +503,12 @@ td > small { margin-top: 3px; overflow: hidden; color: #7c8b84; font-size: .65re
 
 @media (max-width: 900px) {
   .stats-row { grid-template-columns: repeat(2,1fr); }
-  .lookup-form { grid-template-columns: 1fr 1fr; }
-  .lookup-form button { grid-column: 1 / -1; }
 }
 @media (max-width: 620px) {
   .location-map { height: 300px; }
   .map-toolbar { align-items: flex-start; flex-direction: column; }
   .map-toolbar button { width: 100%; justify-content: center; }
+  .map-location-cta > button { min-width: 230px; }
   .coordinate-row { align-items: flex-start; flex-direction: column; }
   .lookup-card, .lookup-card.has-result { padding: 22px 16px; }
   .lookup-heading { align-items: flex-start; }

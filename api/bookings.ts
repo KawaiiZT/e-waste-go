@@ -14,7 +14,7 @@ type BookingInput = {
   website?: unknown;
 };
 
-type ItemCounts = { phone: number; laptop: number; accessory: number; appliance: number };
+type ItemCounts = { small: number; medium: number; large: number; other: number };
 
 function cleanText(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -29,10 +29,10 @@ function validateItems(value: unknown): ItemCounts | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
   const result = {
-    phone: Number(source.phone),
-    laptop: Number(source.laptop),
-    accessory: Number(source.accessory),
-    appliance: Number(source.appliance),
+    small: Number(source.small),
+    medium: Number(source.medium),
+    large: Number(source.large),
+    other: Number(source.other),
   };
   if (Object.values(result).some((count) => !Number.isInteger(count) || count < 0 || count > 20)) return null;
   return Object.values(result).some((count) => count > 0) ? result : null;

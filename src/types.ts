@@ -1,4 +1,4 @@
-export type ItemKey = "phone" | "laptop" | "accessory" | "appliance";
+export type ItemKey = "small" | "medium" | "large" | "other";
 
 export type BookingStatus = "pending" | "confirmed" | "en_route" | "completed" | "cancelled";
 
@@ -17,7 +17,7 @@ export type BookingRecord = {
   pickup_lng?: number | null;
   pickup_date: string;
   pickup_time: string;
-  items: Record<ItemKey, number>;
+  items: Record<string, number>;
   notes?: string | null;
   admin_notes?: string | null;
   status: BookingStatus;
